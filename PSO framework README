@@ -1,0 +1,328 @@
+Differentially Private PSO-Optimized MLP for IoT Intrusion Detection
+README
+Title
+Privacy-Preserving Intrusion Detection Using Particle Swarm Optimization and Differentially Private Deep Learning for IoT Networks
+________________________________________
+1. Project Overview
+This repository presents a reproducible implementation of a Differentially Private (DP) Multi-Layer Perceptron (MLP) Intrusion Detection System (IDS) optimized using Particle Swarm Optimization (PSO). The framework is designed for IoT cybersecurity environments where preserving the privacy of sensitive network traffic is critical.
+The proposed methodology integrates:
+•	Deep Learning based Intrusion Detection
+•	Differential Privacy using DP-SGD
+•	Particle Swarm Optimization for Hyperparameter Tuning
+•	Stratified Cross Validation
+•	Privacy–Utility Trade-off Evaluation
+•	TensorFlow Privacy Framework
+The implementation supports reproducible experiments suitable for Springer journal submission and peer-review evaluation.
+________________________________________
+2. Research Contributions
+The study contributes the following:
+1.	Development of a privacy-preserving IDS using Differential Privacy.
+2.	Integration of PSO for automated hyperparameter optimization.
+3.	Evaluation of privacy-utility trade-offs under DP-SGD.
+4.	Comparison between non-private and private deep learning models.
+5.	Computation of formal privacy guarantees using epsilon (ε) and delta (δ).
+6.	Experimental validation using IoT intrusion datasets.
+________________________________________
+3. Methodology
+The proposed framework consists of the following stages:
+Stage 1: Data Preprocessing
+•	Dataset loading
+•	Feature normalization using StandardScaler
+•	Label encoding of attack classes
+•	Train-validation-test splitting
+Stage 2: PSO Hyperparameter Optimization
+PSO optimizes:
+•	Number of hidden layers
+•	Number of neurons
+•	Dropout rates
+•	Learning rate
+•	Batch size
+•	Activation functions
+•	Optimizer selection
+•	Epoch configuration
+Stage 3: Deep Learning IDS Training
+Two models are trained:
+Non-Private Model
+Standard SGD/Adam optimization without privacy.
+Private Model
+DP-SGD optimization using:
+•	Gradient clipping
+•	Gaussian noise injection
+•	Privacy accounting
+Stage 4: Evaluation
+Performance metrics:
+•	Accuracy
+•	Precision
+•	Recall
+•	F1-score
+•	Precision-Recall AUC
+•	Confusion Matrix
+Privacy metrics:
+•	Privacy Budget ε (epsilon)
+•	Delta δ
+•	Noise Multiplier
+•	Gradient Clipping Norm
+________________________________________
+4. Repository Structure
+project/
+│
+├── data/
+│   └── IoT_Intrusion.csv
+│
+├── notebooks/
+│   └── MLP_PSO_DP_IDS.ipynb
+│
+├── results/
+│   ├── confusion_matrix.png
+│   ├── pr_curve.png
+│   ├── training_loss.png
+│   └── privacy_report.txt
+│
+├── requirements.txt
+├── README.md
+└── LICENSE
+________________________________________
+5. Software Requirements
+Python Version
+Python 3.9+
+Required Libraries
+numpy
+pandas
+matplotlib
+seaborn
+tensorflow
+tensorflow-privacy
+scikit-learn
+pyswarm
+scipy
+Install dependencies:
+pip install -r requirements.txt
+________________________________________
+import os
+import time
+import random
+import warnings
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+import tensorflow as tf
+import tensorflow_privacy
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.optimizers import SGD, Adam
+
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    precision_recall_curve,
+    auc
+)
+
+from pyswarm import pso
+from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy
+________________________________________
+Corrected Version
+SEED = 42
+
+np.random.seed(SEED)
+random.seed(SEED)
+tf.random.set_seed(SEED)
+This ensures experimental reproducibility 
+________________________________________
+6.3 Fixed Dataset Leakage Risk
+Problem
+Scaling before train-test separation may introduce data leakage.
+Corrected Version
+X_train, X_temp, y_train, y_temp = train_test_split(
+    X,
+    y,
+    test_size=0.25,
+    stratify=y,
+    random_state=SEED
+)
+
+X_valid, X_test, y_valid, y_test = train_test_split(
+    X_temp,
+    y_temp,
+    test_size=0.4,
+    stratify=y_temp,
+    random_state=SEED
+)
+
+scaler = StandardScaler()
+
+X_train_scaled = scaler.fit_transform(X_train)
+X_valid_scaled = scaler.transform(X_valid)
+X_test_scaled = scaler.transform(X_test)
+________________________________________
+Problem
+Direct indexing of floating-point PSO outputs may generate out-of-range errors.
+Corrected Version
+activation = ACTIVATIONS[min(int(round(x[1])), len(ACTIVATIONS)-1)]
+optimizer = OPTIMIZERS[min(int(round(x[2])), len(OPTIMIZERS)-1)]
+This prevents invalid index selection during optimization.
+________________________________________
+Problem
+The number of classes changed after filtering attack categories.
+Corrected Version
+num_classes = data[target_column].nunique()
+This statement must be executed after filtering the target classes.
+________________________________________
+6.6 Differential Privacy Training
+mlp_model_privacy.compile(
+    optimizer=dp_optimizer,
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+________________________________________
+6.7  Privacy Accounting
+privacy_report = (
+    compute_dp_sgd_privacy
+    .compute_dp_sgd_privacy_statement(
+        number_of_examples=len(X_train_scaled),
+        batch_size=best_hp_dp['batch_size'],
+        noise_multiplier=best_hp_dp['noise_multiplier'],
+        num_epochs=30,
+        delta=1e-5
+    )
+)
+This ensures mathematically correct epsilon estimation.
+________________________________________
+6.8 Cross-Validation 
+Corrected Solution
+A new model instance must be initialized inside every cross-validation fold.
+for train_index, test_index in kfold.split(X_s, y_s):
+
+    model = build_model(hyperparams)
+
+    model.fit(...)
+This prevents information leakage between folds.
+________________________________________
+6.9 Hyperparameters
+
+Training optimized parameters.
+model_history = mlp_model.fit(
+    X_train_scaled,
+    y_train,
+    epochs=best_hp['epochs'],
+    batch_size=best_hp['batch_size'],
+    validation_split=0.2
+)
+________________________________________
+7. Differential Privacy Explanation
+The private IDS model applies Differential Privacy Stochastic Gradient Descent (DP-SGD).
+The mechanism consists of:
+1.	Per-sample gradient computation
+2.	Gradient clipping using:
+||g_i|| <= C
+3.	Addition of Gaussian noise:
+Where:
+•	C = clipping norm
+•	σ = noise multiplier
+•	L = batch size
+The resulting mechanism satisfies:
+________________________________________
+8. Privacy Interpretation
+Strong Privacy
+ε < 1
+High privacy protection with larger utility degradation.
+Moderate Privacy
+1 ≤ ε ≤ 5
+Balanced privacy-utility trade-off.
+Weak Privacy
+ε > 10
+Lower privacy protection with higher predictive utility.
+________________________________________
+9. Experimental Evaluation
+Classification Metrics
+The following metrics are reported:
+Accuracy
+Precision
+Recall
+F1-score
+PR-AUC
+Privacy Metrics
+Epsilon (ε)
+Delta (δ)
+Noise Multiplier
+Gradient Clipping Norm
+________________________________________
+10. Running the Project
+Step 1: Clone Repository
+git clone https://github.com/username/repository.git
+cd repository
+Step 2: Install Dependencies
+pip install -r requirements.txt
+Step 3: Execute Notebook
+jupyter notebook
+Open:
+MLP_PSO_DP_IDS.ipynb
+________________________________________
+11. Computational Complexity
+PSO Complexity
+Particle Swarm Optimization complexity:
+
+Where:
+•	P = swarm size
+•	I = iterations
+•	F = model evaluation cost
+DP-SGD Complexity
+DP-SGD incurs additional overhead due to:
+•	Per-sample gradient computation
+•	Gradient clipping
+•	Gaussian noise injection
+Approximate complexity:
+Where:
+•	E = epochs
+•	B = batch size
+•	W = trainable parameters
+________________________________________
+12. Recommended 
+Recommended Hardware 
+CPU: Intel Core i9 or AMD Ryzen 9
+RAM: Minimum 32 GB
+GPU: NVIDIA RTX 5000 Series
+Framework: TensorFlow 2.13.0
+Operating System: Windows/Linux
+________________________________________
+13. Reproducibility Statement
+All experiments were conducted using fixed random seeds and deterministic preprocessing to ensure reproducibility.
+The repository includes:
+•	Source code
+•	Hyperparameter configuration
+•	Privacy accounting configuration
+•	Evaluation scripts
+•	Experimental plots
+________________________________________
+14. Citation
+If you use this implementation, cite the corresponding journal article.
+Author(s)(machooka). Privacy-Preserving Intrusion Detection Using Differentially Private Deep Learning and Particle Swarm Optimization. Springer Journal, 2027.
+________________________________________
+15. License
+This project is distributed under the MIT License.
+________________________________________
+16. Final  Notes
+The resulting implementation is substantially more suitable for:
+•	Reproducible privacy-preserving IDS research
+•	Benchmark comparison studies
+________________________________________
+17. Suggested requirements.txt
+numpy>=1.24.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+scikit-learn>=1.3.0
+tensorflow>=2.13.0
+tensorflow-privacy>=0.9.0
+scipy>=1.11.0
+pyswarm>=0.6
+jupyter>=1.0.0
