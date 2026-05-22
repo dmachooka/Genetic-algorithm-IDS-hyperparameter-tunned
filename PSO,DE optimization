@@ -1,0 +1,563 @@
+1. Overview of the Framework for DE
+
+This implementation develops an Intrusion Detection System (IDS) using:
+
+Long Short-Term Memory (LSTM) deep learning
+Differential Evolution (DE) for hyperparameter optimization
+Differential Privacy Stochastic Gradient Descent (DP-SGD)
+TensorFlow Privacy for privacy-preserving learning
+
+The framework performs two major experiments:
+
+Non-private optimized LSTM model
+Differentially private optimized LSTM model
+
+The objective is to evaluate the privacy–utility trade-off between predictive performance and privacy guarantees.
+
+2. Import Libraries
+import os
+import time
+import numpy as np
+import pandas as pd
+Explanation
+Library	Purpose
+os	Operating system utilities
+time	Runtime measurements
+numpy	Numerical matrix operations
+pandas	Dataset loading and preprocessing
+import seaborn as sns
+import matplotlib.pyplot as plt
+Explanation
+
+Used for:
+
+Statistical visualization
+Loss curve plotting
+Precision-recall curves
+Confusion matrices
+3. Scikit-Learn Utilities
+from sklearn.utils import resample, shuffle
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler, MinMaxScaler
+Explanation
+train_test_split
+
+Partitions dataset into:
+
+Training
+Validation
+Testing
+StandardScaler
+
+Applies z-score normalization:
+
+z=
+σ
+x−μ
+	​
+
+x
+μ
+σ
+z=
+σ
+x−μ
+	​
+
+≈1.2
+Φ(z)≈88.5%
+
+This stabilizes gradient descent and improves convergence.
+
+LabelEncoder
+
+Converts categorical labels into integer representations.
+
+4. Performance Metrics
+from sklearn.metrics import (
+    recall_score,
+    f1_score,
+    precision_score,
+    accuracy_score,
+    confusion_matrix,
+    precision_recall_curve,
+    average_precision_score,
+    auc,
+)
+Explanation
+
+These metrics evaluate IDS performance:
+
+Metric	Meaning
+Accuracy	Overall prediction correctness
+Precision	Attack prediction correctness
+Recall	Detection capability
+F1-score	Balance between precision and recall
+AUC	Area under precision-recall curve
+
+F1-score is particularly important for imbalanced IDS datasets.
+
+5. TensorFlow Deep Learning Modules
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Conv2D, MaxPooling2D, Flatten, Dropout
+from tensorflow.keras.optimizers import Adam, SGD
+Explanation
+Sequential
+
+Creates feed-forward neural network architecture.
+
+LSTM
+
+Captures temporal dependencies in network traffic.
+
+Dense
+
+Fully connected neural layers.
+
+Dropout
+
+Regularization technique preventing overfitting.
+
+Adam and SGD
+
+Optimization algorithms for gradient descent learning.
+
+6. Differential Privacy Libraries
+import tensorflow_privacy
+from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy
+Explanation
+
+TensorFlow Privacy provides DP-SGD implementation.
+
+DP-SGD modifies standard SGD using:
+
+Gradient clipping
+Noise injection
+
+The DP guarantee is expressed as:
+
+(ε,δ)-DP
+
+Where:
+
+ε controls privacy leakage
+δ is failure probability
+
+Smaller ε indicates stronger privacy.
+
+7. Warning Suppression
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+Explanation
+
+Suppresses unnecessary warning messages during execution.
+
+8. Dataset Loading
+data = pd.read_csv(...)
+Explanation
+
+Loads BotNeTIoT dataset containing IoT attack traffic.
+
+9. Target Variable Definition
+target_column = 'label'
+num_classes = data[target_column].nunique()
+Explanation
+label contains attack classes
+nunique() counts total classes
+10. Feature Extraction
+X = data.drop(target_column, axis=1)
+y = data[target_column]
+Explanation
+
+Separates:
+
+Features (X)
+Labels (y)
+11. Dataset Splitting
+X_train, X_temp, y_train, y_temp = train_test_split(...)
+Explanation
+
+Creates:
+
+Dataset	Purpose
+Training	Model learning
+Validation	Hyperparameter tuning
+Testing	Final evaluation
+12. Feature Scaling
+scaler = StandardScaler()
+Explanation
+
+Transforms features into standardized distributions.
+
+This improves:
+
+Numerical stability
+Faster convergence
+Gradient optimization
+13. Hyperparameter Search Space
+LSTM_UNITS = [16, 32, 64, 128, 256]
+Explanation
+
+Defines candidate architectures explored by Differential Evolution.
+
+Search dimensions include:
+
+Hyperparameter	Purpose
+LSTM units	Temporal feature extraction
+Dense units	Classification capability
+Activation	Nonlinear learning
+Learning rate	Optimization speed
+Batch size	Gradient estimation
+Epochs	Training duration
+14. Model Evaluation Function
+def evaluate_lstm_dense(hyperparams):
+Explanation
+
+Builds and evaluates an LSTM model using supplied hyperparameters.
+
+The function:
+
+Creates architecture
+Compiles model
+Performs cross-validation
+Returns mean accuracy
+15. LSTM Layer Construction
+model.add(LSTM(...))
+Explanation
+
+LSTM captures sequential dependencies in network traffic.
+
+The hidden state transition mechanism is:
+
+h
+t
+	​
+
+=f(Wx
+t
+	​
+
++Uh
+t−1
+	​
+
++b)
+
+This enables temporal learning of intrusion patterns.
+
+16. Dropout Regularization
+model.add(Dropout(rate=l_drop[i]))
+Explanation
+
+Randomly disables neurons during training.
+
+Benefits:
+
+Prevents memorization
+Reduces overfitting
+Improves generalization
+17. Output Layer
+model.add(Dense(num_classes, activation='softmax'))
+Explanation
+
+Softmax converts logits into probability distributions:
+
+P(y
+i
+	​
+
+)=
+∑
+j=1
+K
+	​
+
+e
+z
+j
+	​
+
+e
+z
+i
+	​
+
+	​
+
+
+18. Model Compilation
+model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
+Explanation
+
+Defines:
+
+Component	Role
+Optimizer	Weight updates
+Loss	Error minimization
+Metrics	Performance tracking
+19. Stratified Cross Validation
+kfold = StratifiedKFold(...)
+Explanation
+
+Maintains class balance across folds.
+
+Important for IDS datasets with skewed attack distributions.
+
+20. Differential Evolution Objective Function
+def de_objective(x):
+Explanation
+
+Converts optimization vectors into neural network hyperparameters.
+
+DE minimizes:
+
+f(x)=−Accuracy(x)
+
+Negative accuracy is used because DE performs minimization.
+
+21. Differential Evolution Optimization
+result = differential_evolution(...)
+Explanation
+
+DE evolves candidate solutions through:
+
+Mutation
+Crossover
+Selection
+
+Mutation equation:
+
+v
+i
+	​
+
+=x
+r1
+	​
+
++F(x
+r2
+	​
+
+−x
+r3
+	​
+
+)
+
+22. Final Model Training
+history = final_model.fit(...)
+Explanation
+
+Trains optimized LSTM architecture on full training dataset.
+
+23. Prediction Generation
+y_test_pred_probs = final_model.predict(X_test_lstm)
+Explanation
+
+Generates probability predictions for IDS classification.
+
+24. Evaluation Metrics
+accuracy_lstm = accuracy_score(...)
+Explanation
+
+Computes final IDS performance metrics.
+
+25. Visualization Functions
+plot_loss(history)
+Explanation
+
+Plots:
+
+Training loss
+Validation loss
+Accuracy convergence
+
+Used to analyze:
+
+Overfitting
+Underfitting
+Convergence stability
+26. Confusion Matrix
+conf_matrix = confusion_matrix(...)
+Explanation
+
+Shows:
+
+Actual	Predicted
+True Positive	Correct attack detection
+False Positive	False alarm
+False Negative	Missed attack
+
+Critical for IDS evaluation.
+
+27. Precision–Recall Curve
+precision_recall_curve(...)
+Explanation
+
+More informative than ROC for imbalanced cybersecurity datasets.
+
+28. Differential Privacy Model
+dp_opt = tensorflow_privacy.DPKerasSGDOptimizer(...)
+Explanation
+
+Implements DP-SGD.
+
+Core DP mechanism:
+
+Gradient clipping:
+
+g
+ˉ
+	​
+
+(x
+i
+	​
+
+)=g(x
+i
+	​
+
+)min(1,
+∣∣g(x
+i
+	​
+
+)∣∣
+2
+	​
+
+C
+	​
+
+)
+
+Gaussian noise addition:
+
+g
+~
+	​
+
+=
+L
+1
+	​
+
+(∑
+i
+	​
+
+g
+ˉ
+	​
+
+(x
+i
+	​
+
+)+N(0,σ
+2
+C
+2
+I))
+
+Where:
+
+C = clipping norm
+σ = noise multiplier
+29. Privacy Budget Computation
+privacy_report = compute_dp_sgd_privacy...
+Explanation
+
+Calculates final privacy guarantee:
+
+ε∝
+σ
+q
+T
+	​
+
+	​
+
+
+Where:
+
+Variable	Meaning
+q	Sampling ratio
+T	Number of iterations
+σ	Noise multiplier
+30. Final Comparison
+df = pd.DataFrame(data)
+Explanation
+
+Compares:
+
+Metric	Regular Model	DP Model
+Accuracy	Utility baseline	Privacy-preserving
+Precision	Detection quality	Privacy trade-off
+Recall	Attack sensitivity	Privacy trade-off
+F1-score	Balanced IDS metric	Privacy trade-off
+31. Scientific Contribution
+Contributions of the Framework
+
+The framework contributes:
+
+Differential Evolution hyperparameter optimization
+Privacy-preserving IDS using DP-SGD
+Automated neural architecture search
+Empirical privacy–utility analysis
+IoT intrusion detection benchmarking
+32. Computational Complexity
+Differential Evolution Complexity
+
+The optimization complexity is approximately:
+
+O(G×P×D×C
+f
+	​
+
+)
+
+Where:
+
+Variable	Meaning
+G	Generations
+P	Population size
+D	Search dimensions
+C
+f
+	​
+
+	Model training cost
+33. Differential Privacy Trade-Off
+
+Increasing noise multiplier improves privacy:
+
+Lower ε
+Stronger privacy
+
+However:
+
+Accuracy decreases
+Utility degrades
+
+This creates the privacy–utility trade-off central to DP learning.
+
+34. Springer Journal Interpretation
+Scientific Interpretation
+
+The implementation demonstrates that:
+
+Evolutionary optimization effectively discovers high-performing LSTM architectures with high privacy and low privacy budget.
+DP-SGD introduces controlled utility degradation while protecting sensitive IoT traffic patterns.
+Hyperparameter tuning substantially affects both privacy and utility.
+Noise multiplier and clipping norm are dominant privacy-sensitive parameters.
+35. Reproducibility Notes
+Recommended Reproducibility Settings
+random.seed(42)
+np.random.seed(42)
+tf.random.set_seed(42)
+
+This ensures experimental consistency.
